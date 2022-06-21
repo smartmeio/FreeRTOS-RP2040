@@ -1,3 +1,3 @@
-[submodule "lib/freertos-kernel"]
-	path = lib/freertos-kernel
-	url = ssh://git@git.smartme.io:20022/godario/freertos-kernel.git
+[submodule "lib/FreeRTOS-kernel"]
+	path = lib/FreeRTOS-Kernel
+	url = ssh://git@git.smartme.io:20022/godario/FreeRTOS-Kernel.git

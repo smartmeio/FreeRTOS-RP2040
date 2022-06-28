@@ -42,6 +42,10 @@
 #include "timers.h"
 
 /*-----------------------------------------------------------*/
+#if defined(USE_TINYUSB)
+TaskHandle_t yield_handle;
+void yield_task(void *pvParameters);
+#endif
 
 void initFreeRTOS(void)
 {
@@ -58,7 +62,7 @@ volatile bool __usbInitted = false;
 static void __core0(void *params)
 {
     (void) params;
-#ifndef NO_USB
+#if !defined(NO_USB) && !defined(USE_TINYUSB)
     while (!__usbInitted) {
         delay(1);
     }
@@ -81,7 +85,7 @@ static void __core0(void *params)
 static void __core1(void *params)
 {
     (void) params;
-#ifndef NO_USB
+#if !defined(NO_USB) && !defined(USE_TINYUSB)
     while (!__usbInitted) {
         delay(1);
     }
@@ -112,10 +116,36 @@ extern mutex_t __usb_mutex;
 static TaskHandle_t __usbTask;
 static void __usb(void *param);
 
+void yield_task(void *pvParameters)
+{
+    while (1)
+    {
+        tud_task();
+
+        if (arduino::serialEventRun)
+        {
+            arduino::serialEventRun();
+        }
+        if (arduino::serialEvent1Run)
+        {
+            arduino::serialEvent1Run();
+        }
+        if (arduino::serialEvent2Run)
+        {
+            arduino::serialEvent2Run();
+        }
+        vTaskDelay(1 / portTICK_PERIOD_MS);
+    }
+}
+
 void startFreeRTOS(void)
 {
 
     TaskHandle_t c0;
+#if defined(USE_TINYUSB)
+    xTaskCreate(yield_task, "usb_yield", 256, 0, configMAX_PRIORITIES - 1, &(yield_handle));
+    vTaskCoreAffinitySet(yield_handle, 1 << 0);
+#endif
     xTaskCreate(__core0, "CORE0", 1024, 0, configMAX_PRIORITIES / 2, &c0);
     vTaskCoreAffinitySet( c0, 1 << 0 ); 
 
@@ -246,13 +276,20 @@ void rtosFatalError(void)
 {
     prvSetMainLedOn(); // Main LED on.
     
-    for(;;)
+    for (;;)
     {
-    	// Main LED slow flash
-        sleep_ms(100);
-        prvBlinkMainLed();
-        sleep_ms(2000);
-        prvBlinkMainLed();
+        // Main LED slow flash
+        for (int i = 0; i < 20; i++)
+        {
+            sleep_ms(100);
+            prvBlinkMainLed();
+        }
+        sleep_ms(1000);
+
+        // sleep_ms(100);
+        // prvBlinkMainLed();
+        // sleep_ms(2000);
+        // prvBlinkMainLed();
     }
 }
 
@@ -409,10 +446,16 @@ static void __usb(void *param)
     }
 }
 
+extern void __SetupDescHIDReport();
+extern void __SetupUSBDescriptor();
 
 void __USBStart()
 {
     mutex_init(&__usb_mutex);
+
+    __SetupDescHIDReport();
+    __SetupUSBDescriptor();
+
     // Make highest prio and locked to core 0
     xTaskCreate(__usb, "USB", 256, 0, configMAX_PRIORITIES - 1, &__usbTask);
     vTaskCoreAffinitySet( __usbTask, 1 << 0 );

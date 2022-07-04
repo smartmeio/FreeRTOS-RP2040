@@ -115,12 +115,12 @@ extern "C" void yield() {
 extern mutex_t __usb_mutex;
 static TaskHandle_t __usbTask;
 static void __usb(void *param);
-
+#if defined(USE_TINYUSB)
 void yield_task(void *pvParameters)
 {
     while (1)
     {
-        tud_task();
+        TinyUSB_Device_Task();
 
         if (arduino::serialEventRun)
         {
@@ -137,6 +137,7 @@ void yield_task(void *pvParameters)
         vTaskDelay(1 / portTICK_PERIOD_MS);
     }
 }
+#endif
 
 void startFreeRTOS(void)
 {

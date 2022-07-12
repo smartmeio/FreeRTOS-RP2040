@@ -1,4 +1,3 @@
 [submodule "lib/FreeRTOS-Kernel"]
 	path = lib/FreeRTOS-Kernel
-	url = https://git.smartme.io/godario/FreeRTOS-Kernel.git
-	branch = smp
+	url = https://github.com/smartmeio/FreeRTOS-Kernel.git
